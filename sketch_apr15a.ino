@@ -2,7 +2,6 @@
 #include "DHT.h"
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
-#include <WiFiClientSecure.h>
 #include <ESP8266HTTPClient.h>
 #include <ArduinoJson.h>
 
@@ -11,8 +10,8 @@
 
 DHT dht(DHTPIN, DHTTYPE);
 
-const char *ssid = ""; // Nhập ssid wifi
-const char *password = ""; // Nhập pass wifi
+const char *ssid = "Thanh Thai"; // Nhập ssid wifi
+const char *password = "Nevergiveup2705"; // Nhập pass wifi
 const char *server_url = "https://ancient-spire-87457.herokuapp.com/"; // Nodejs application endpoint
 
 // Khai báo các biến được sử dụng để lưu thông số được đo từ cảm biến
@@ -23,7 +22,7 @@ float tempF;
 StaticJsonBuffer<200> jsonBuffer;
 
 // Thiết lập đối tượng client
-WiFiClientSecure client;
+WiFiClient client;
 HTTPClient http;
   
 void setup() {
@@ -76,9 +75,11 @@ void loop() {
   // Tạo kết nối server và gửi dữ liệu 
   String h = "";
   h.concat(humi);
-  http.begin(client, "https://ancient-spire-87457.herokuapp.com/sensor/humidity");
+  http.begin(client, "http://192.168.1.238:3000/sensor/humidity");
   http.addHeader("Content-Type", "application/json");
-  int httpCode = http.POST("humidity: " + h);  
+//  http.addHeader("cache-control", "no-cache");    
+//  int httpCode = http.GET();
+  int httpCode = http.POST("{\"humidity\":" + h + "}");  
   
   // Kiểm tra phản hồi của server với độ ẩm (httpCode = 200, 404, 500)
   if(httpCode == HTTP_CODE_OK || httpCode == HTTP_CODE_NOT_FOUND || httpCode == HTTP_CODE_INTERNAL_SERVER_ERROR){
@@ -88,7 +89,7 @@ void loop() {
     Serial.println(httpCode);
   }
   else{
-    Serial.printf("[HTTP] GET... failed, error: %s", http.errorToString(httpCode).c_str());
+    Serial.printf("Error: %s", http.errorToString(httpCode).c_str());
     Serial.print(" - httpcode: ");
     Serial.println(httpCode);
   }
@@ -97,9 +98,9 @@ void loop() {
   tC.concat(tempC);
   String tF = "";
   tF.concat(tempF);
-  http.begin(client, "https://ancient-spire-87457.herokuapp.com/sensor/temperature");
+  http.begin(client, "http://192.168.1.238:3000/sensor/temperature");
   http.addHeader("Content-Type", "application/json");
-  int httpCode1 = http.POST("celcius: " + tC + "fahrenheit: " + tF);
+  int httpCode1 = http.POST("{\"celcius\":" + tC + ",\"fahrenheit\":" + tF + "}");
   
   // Kiểm tra phản hồi của server với độ ẩm (httpCode = 200, 404, 500)
   if(httpCode1 == HTTP_CODE_OK || httpCode1 == HTTP_CODE_NOT_FOUND || httpCode1 == HTTP_CODE_INTERNAL_SERVER_ERROR){
@@ -109,7 +110,7 @@ void loop() {
     Serial.println(httpCode);
   }
   else{
-    Serial.printf("[HTTP] GET... failed, error: %s", http.errorToString(httpCode).c_str());
+    Serial.printf("Error: %s", http.errorToString(httpCode).c_str());
     Serial.print(" - HttpCode: ");
     Serial.println(httpCode);
   }
