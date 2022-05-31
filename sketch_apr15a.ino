@@ -3,7 +3,6 @@
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
 #include <ESP8266HTTPClient.h>
-#include <ArduinoJson.h>
 
 #define DHTPIN 2   // Chân kỹ thuật số kết nối với DHT11
 #define DHTTYPE DHT11   // Đặt loại cảm biến là DHT11
@@ -18,8 +17,8 @@ const char *server_url = "https://ancient-spire-87457.herokuapp.com/"; // Nodejs
 float humi;
 float tempC;
 float tempF; 
-
-StaticJsonBuffer<200> jsonBuffer;
+int cambien = 5;
+int giatri;
 
 // Thiết lập đối tượng client
 WiFiClient client;
@@ -31,6 +30,7 @@ void setup() {
 
   // Khởi động cảm biến
   dht.begin();
+  pinMode(cambien, INPUT);
 
   //Kết nối wifi
   WiFi.begin(ssid, password);
@@ -49,9 +49,10 @@ void loop() {
   humi = dht.readHumidity();
   tempC = dht.readTemperature();
   tempF = dht.readTemperature(true);
+  giatri = digitalRead(cambien);
 
   // Kiểm tra có đọc được dữ liệu từ sensor hay không   
-   if (isnan(humi) || isnan(tempC) || isnan(tempF)) {
+   if (isnan(humi) || isnan(tempC) || isnan(tempF) || isnan(giatri)) {
     Serial.println("Failed to read from DHT sensor!");
     return;
   }         
@@ -64,21 +65,15 @@ void loop() {
   Serial.print(tempC); 
   Serial.print("oC ~ ");
   Serial.print(tempF); 
-  Serial.println("oF");
+  Serial.print("oF  ");
+  Serial.print("Photoresistance Sensor = ");
+  Serial.println(giatri);
 
-  // Gán giá trị
-  JsonObject& values = jsonBuffer.createObject();
-  values["humidity"] = humi;
-  values["tempC"] = tempC;
-  values["tempF"] = tempF;
-  
   // Tạo kết nối server và gửi dữ liệu 
   String h = "";
   h.concat(humi);
   http.begin(client, "http://192.168.1.238:3000/sensor/humidity");
   http.addHeader("Content-Type", "application/json");
-//  http.addHeader("cache-control", "no-cache");    
-//  int httpCode = http.GET();
   int httpCode = http.POST("{\"humidity\":" + h + "}");  
   
   // Kiểm tra phản hồi của server với độ ẩm (httpCode = 200, 404, 500)
@@ -89,7 +84,7 @@ void loop() {
     Serial.println(httpCode);
   }
   else{
-    Serial.printf("Error: %s", http.errorToString(httpCode).c_str());
+    Serial.printf("Error humidity: %s", http.errorToString(httpCode).c_str());
     Serial.print(" - httpcode: ");
     Serial.println(httpCode);
   }
@@ -110,11 +105,31 @@ void loop() {
     Serial.println(httpCode);
   }
   else{
-    Serial.printf("Error: %s", http.errorToString(httpCode).c_str());
+    Serial.printf("Error temperature: %s", http.errorToString(httpCode).c_str());
     Serial.print(" - HttpCode: ");
     Serial.println(httpCode);
   }
 
+  String l = "";
+  l.concat(giatri);
+  http.begin(client, "http://192.168.1.238:3000/sensor/light");
+  http.addHeader("Content-Type", "application/json");
+  int httpCode2 = http.POST("{\"light\":" + l + "}");  
+  
+  // Kiểm tra phản hồi của server với độ ẩm (httpCode = 200, 404, 500)
+  if(httpCode2 == HTTP_CODE_OK || httpCode2 == HTTP_CODE_NOT_FOUND || httpCode2 == HTTP_CODE_INTERNAL_SERVER_ERROR){
+    Serial.print("Response Light: ");
+    Serial.println(http.getString());
+    Serial.print("HttpCode: ");
+    Serial.println(httpCode);
+  }
+  else{
+    Serial.printf("Error light: %s", http.errorToString(httpCode).c_str());
+    Serial.print(" - httpcode: ");
+    Serial.println(httpCode);
+  }
+
   http.end(); // Ngắt kết nối
-  delay(3000); //Gửi dữ liệu 5p/lần 
+  Serial.println("--------------------");
+  delay(5000); //Gửi dữ liệu 5s/lần 
 }
