@@ -9,16 +9,17 @@
 
 DHT dht(DHTPIN, DHTTYPE);
 
-const char *ssid = "Thanh Thai"; // Nhập ssid wifi
-const char *password = "Nevergiveup2705"; // Nhập pass wifi
+const char *ssid = ""; // Nhập ssid wifi
+const char *password = ""; // Nhập pass wifi
 const char *server_url = "https://ancient-spire-87457.herokuapp.com/"; // Nodejs application endpoint
 
 // Khai báo các biến được sử dụng để lưu thông số được đo từ cảm biến
 float humi;
 float tempC;
 float tempF; 
-int cambien = 5;
-int giatri;
+int light;
+int uv;
+int wind;
 
 // Thiết lập đối tượng client
 WiFiClient client;
@@ -30,7 +31,6 @@ void setup() {
 
   // Khởi động cảm biến
   dht.begin();
-  pinMode(cambien, INPUT);
 
   //Kết nối wifi
   WiFi.begin(ssid, password);
@@ -49,10 +49,15 @@ void loop() {
   humi = dht.readHumidity();
   tempC = dht.readTemperature();
   tempF = dht.readTemperature(true);
-  giatri = digitalRead(cambien);
+//  giatri = digitalRead(cambien);
+
+  light = rand() % 7901 + 2100;
+  uv = rand() % 11 + 1;
+  wind = rand() % 10;
+  
 
   // Kiểm tra có đọc được dữ liệu từ sensor hay không   
-   if (isnan(humi) || isnan(tempC) || isnan(tempF) || isnan(giatri)) {
+   if (isnan(humi) || isnan(tempC) || isnan(tempF) || isnan(light) || isnan(uv) || isnan(wind)) {
     Serial.println("Failed to read from DHT sensor!");
     return;
   }         
@@ -66,13 +71,19 @@ void loop() {
   Serial.print("oC ~ ");
   Serial.print(tempF); 
   Serial.print("oF  ");
-  Serial.print("Photoresistance Sensor = ");
-  Serial.println(giatri);
-
+  Serial.print("Light = ");
+  Serial.print(light);
+  Serial.print("lux  ");
+  Serial.print("UV = ");
+  Serial.print(uv);
+  Serial.print("  windDensity = ");
+  Serial.print(wind);
+  Serial.println("km/h");
+  
   // Tạo kết nối server và gửi dữ liệu 
   String h = "";
   h.concat(humi);
-  http.begin(client, "http://192.168.1.238:3000/sensor/humidity");
+  http.begin(client, "http://localhost:3000/sensor/humidity");
   http.addHeader("Content-Type", "application/json");
   int httpCode = http.POST("{\"humidity\":" + h + "}");  
   
@@ -93,7 +104,7 @@ void loop() {
   tC.concat(tempC);
   String tF = "";
   tF.concat(tempF);
-  http.begin(client, "http://192.168.1.238:3000/sensor/temperature");
+  http.begin(client, "http://localhost:3000/sensor/temperature");
   http.addHeader("Content-Type", "application/json");
   int httpCode1 = http.POST("{\"celcius\":" + tC + ",\"fahrenheit\":" + tF + "}");
   
@@ -111,12 +122,16 @@ void loop() {
   }
 
   String l = "";
-  l.concat(giatri);
-  http.begin(client, "http://192.168.1.238:3000/sensor/light");
+  String u = "";
+  String w = "";
+  l.concat(light);
+  u.concat(uv);
+  w.concat(wind);
+  http.begin(client, "http://localhost:3000/sensor/light");
   http.addHeader("Content-Type", "application/json");
-  int httpCode2 = http.POST("{\"light\":" + l + "}");  
+  int httpCode2 = http.POST("{\"light\":" + l + ",\"uv\":" + u + ",\"windDensity\":" + w + "}");  
   
-  // Kiểm tra phản hồi của server với độ ẩm (httpCode = 200, 404, 500)
+  // Kiểm tra phản hồi của server với các thông số khác (httpCode = 200, 404, 500)
   if(httpCode2 == HTTP_CODE_OK || httpCode2 == HTTP_CODE_NOT_FOUND || httpCode2 == HTTP_CODE_INTERNAL_SERVER_ERROR){
     Serial.print("Response Light: ");
     Serial.println(http.getString());
@@ -131,5 +146,5 @@ void loop() {
 
   http.end(); // Ngắt kết nối
   Serial.println("--------------------");
-  delay(5000); //Gửi dữ liệu 5s/lần 
+  delay(10000); //Gửi dữ liệu 10s/lần 
 }
